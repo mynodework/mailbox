@@ -1,0 +1,85 @@
+<head>
+    <% include ../partials/head %>
+</head>
+
+<body>
+    <header>
+        <% include ../partials/headers %>
+    </header>
+    <!---->
+    <main>
+        <div class="container my-5">
+            <div class="card-body text-center">
+                <h4 class="card-title">MailBox</h4>
+                <p class="card-text"><%= email%></p>
+            </div>
+            <div class="card">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Subject</th>
+                            <th scope="col">From</th>
+                            <th scope="col">View</th>
+                        </tr>
+                    </thead>
+                    <% for(var i=0; i < data.length; i++) { %>
+                    <tr>
+                        <td scope="col">
+                            <%= data[i].date %>
+                        </td>
+                        <td scope="col">
+                            <%= data[i].subject %>
+                        </td>
+                        <td scope="col">
+                            <%= data[i].from %>
+                        </td>
+                        <td scope="col">
+                            <%=data[i].uid%>
+                            <a href="/body?uid=<%=data[i].uid%>" target="blank">
+                                <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                    data-target="#panel" aria-expanded="false" aria-controls="collapseExample">
+                                    View Email
+                                </button>
+                            </a>
+                        </td>
+                    </tr>
+                    <% } %>
+                </table>
+            </div>
+            <!-- Large modal -->
+
+
+            <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="card-body text-center">
+                            <h4 class="card-title">Index Page</h4>
+                            <p class="card-text">Latest Emails</p>
+                        </div>
+                        <div class=" card col-8 offset-2 my-2 p-3">
+                            <form>
+                                <div class="form-group">
+                                    <label for="listname">List name</label>
+                                    <input type="text" class="form-control" name="listname" id="listname" placeholder="Enter your listname">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datepicker">Deadline</label>
+                                    <input type="text" class="form-control" name="datepicker" id="datepicker"
+                                        placeholder="Pick up a date">
+                                </div>
+                        </div>
+                    </div>
+                    <div class="form-group text-center">
+                        <button type="submit" class="btn btn-block btn-primary">Sign in</button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+    </main>
+    <!---->
+</body>

@@ -1,0 +1,353 @@
+var app = angular.module("PharmacyApp", ["ngRoute","ngSanitize","ngMap","angularUtils.directives.dirPagination"]);
+var _token = '';
+var routes = {
+    '' : {
+        templateUrl : "login.html",
+        controller: 'HomeController',
+        url:'',
+    },
+    'search' : {
+        templateUrl : "search.html",
+        controller: 'SearchController',
+        url:'search-pharmacy',
+    },
+    'profile' : {
+        templateUrl : "profile.html",
+        controller: 'ProfileController',
+        url:'account-overview',
+    },
+    'dashboard' : {
+        templateUrl : "dashboard.html",
+        controller: 'DashboardController',
+        url:'dashboard',
+    },
+    'checkout' : {
+        templateUrl : "checkout.html",
+        controller: 'CheckoutController',
+        url:'checkout/:pharmacy_id',
+    },
+    'orders' : {
+        templateUrl : "orders.html",
+        controller: 'OrdersController',
+        url:'orders',
+    },
+    'tnc' : {
+        templateUrl : "terms.html",
+        controller: 'TncController',
+        url:'terms-condition',
+    },
+    '404' : {
+        templateUrl : "404.html",
+        controller: '404Controller',
+        url:'404',
+    },
+}
+
+function notify(type,message,title) {
+    console.log(type)
+    if(type == 'success'){
+        $.toast({
+            heading: title,
+            text: message,
+            position: 'top-right',
+            loaderBg:'#ff6849',
+            icon: 'success',
+            hideAfter: 3500, 
+            stack: 6
+        });
+    }
+    else if(type == 'error'){
+        $.toast({
+            heading: title,
+            text: message,
+            position: 'top-right',
+            loaderBg:'#ff6849',
+            icon: 'error',
+            hideAfter: 5000, 
+        });
+    }
+}
+
+function ngCall($http, url, options, callback,before, after) {
+    var default_args = {
+        http : $http,
+        postData : {}, 
+        httpMethod : 'POST', 
+        callDataType : "json",
+    }
+
+    $.extend(default_args,options);
+
+    if(before){ before(); }
+
+
+    default_args['postData']['_token'] = _token;
+    var query_string = '';
+    if(default_args['httpMethod'] == 'GET'){
+        query_string = '?' + jQuery.param(default_args['postData']);
+    }
+
+    $http({
+        method: default_args['httpMethod'],
+        responseType: default_args['callDataType'],
+        url: api_url + url + query_string,
+        data: $.param(default_args['postData']),
+        crossDomain: true,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+    })
+    .then(function(response){
+        if(after) { after(); }
+        callback(response.data.data); 
+
+    }, function(){
+        if(after) { after(); }
+    });
+}
+
+app.config(function($routeProvider , $locationProvider) {
+    $.each(routes,function(key,value){
+        $routeProvider.when("/" + value['url'] , {
+            templateUrl : "templates/" + value['templateUrl'],
+            controller:  value['controller'],
+        })
+    })
+
+    $routeProvider.otherwise('/404');
+    $locationProvider.html5Mode(true);
+});
+
+app.run( function($rootScope, $location, $http,$sce) {
+    var token           = localStorage.getItem('id_front_token');
+    var profile         = null;
+    var isAuthenticated = false;
+
+    $rootScope.fillLogin = function(){
+        token           = localStorage.getItem('id_front_token');
+
+        if(token != "undefined" && token){
+            profile = JSON.parse(atob(token));
+            if(profile['id']){ isAuthenticated = true; } else {
+                localStorage.setItem('id_front_token','');
+            }
+        }
+
+        $rootScope.LoginData = profile;
+        if(profile) _token = profile['id'];
+    }
+
+    $rootScope.fillLogin();
+
+    $rootScope.$on( "$routeChangeStart", function(event, next, current) {
+        if ( !$rootScope.isLogin() ) {
+            if ( next.templateUrl != "templates/login.html" ) {
+                $location.path( "/" );
+            }
+        } else {
+            if ( next.templateUrl == "templates/login.html" ) {
+                $location.path( "/dashboard" ); 
+            }
+        }
+    });
+
+    $rootScope.logout = function(){
+        localStorage.setItem('id_front_token','');
+        window.location = $rootScope.route("");
+    }
+
+    $rootScope.route = function(name, param){
+        var route_name =  '/404';
+        if(routes[name]){
+            route_name = routes[name]['url'];
+        }
+        if(param){
+            route_name = route_name.replace("?", '');
+            $.each(param, function(name1,value1){
+                route_name = route_name.replace(":"+ name1, value1);
+            })
+        }
+
+        return route_name;
+    }
+
+    $rootScope.isLogin = function(){ return isAuthenticated; }
+
+    $rootScope.attemptRegister = function(){
+        var postData = {};
+
+        $('.regi-form input').each(function(i,j){
+            postData[$(j).attr('name')] = $(j).val();
+        })
+
+        ngCall($http, 'auth/register'  , {postData: postData}, function(json){
+            $container = $(".regi-form");
+            $container.find(".has-error").removeClass("has-error");
+            $container.find("span.text-danger").remove();
+
+            if(json['loginData']){
+                localStorage.setItem('id_front_token', btoa(JSON.stringify(json['loginData'])));
+                window.location = $rootScope.route("search");
+            }
+
+            if(json['errors']){
+                $.each(json['errors'], function(i,j){
+                    $ele = $container.find('[name="'+ i +'"]');
+                    if($ele){
+                        $ele.parents(".form-group").addClass("has-error");
+                        $ele.after("<span class='text-danger'>"+ j +"</span>");
+                    }
+                })
+            }  
+        })
+    }
+
+    $rootScope.attemptLogin = function(){
+        var postData = {};
+
+        $('.login-form input').each(function(i,j){
+            postData[$(j).attr('name')] = $(j).val();
+        })
+
+        ngCall($http, 'auth/login'  , {postData: postData}, function(json){
+            $container = $(".login-form");
+            $container.find(".has-error").removeClass("has-error");
+            $container.find("span.text-danger").remove();
+
+            if(json['loginData']){
+                localStorage.setItem('id_front_token', btoa(JSON.stringify(json['loginData'])));
+                window.location = $rootScope.route("search");
+            }
+
+            if(json['errors']){
+                $.each(json['errors'], function(i,j){
+                    $ele = $container.find('[name="'+ i +'"]');
+                    if($ele){
+                        $ele.parents(".form-group").addClass("has-error");
+                        $ele.after("<span class='text-danger'>"+ j +"</span>");
+                    }
+                })
+            }  
+        })
+    }
+
+    $rootScope.base_url = base_url;
+    
+    if(!$rootScope.root_state_detail){
+        ngCall($http, 'get_state'  , {postData: {}}, function(json){
+            if(json['state_detail']){
+                $rootScope.root_state_detail = json['state_detail'];
+            }
+        })
+    }
+
+    $rootScope.trustSrc = function(src) {
+        return $sce.trustAsResourceUrl(src);
+    }
+});
+
+app.filter('ArrayString', function() {
+  return function(input) {
+    var arr = input.join(', ');
+    return arr;
+  };
+});
+
+app.filter('na', function() {
+  return function(input) {
+    return input != '' ? input : 'N/A';
+  };
+});
+
+var weekday = {
+    SUN : "Sunday",
+    MON : "Monday",
+    TUE : "Tuesday",
+    WED : "Wednesday",
+    THU : "Thursday",
+    FRI : "Friday",
+    SAT : "Saturday",
+}
+
+app.filter('days', function() {
+    return function(input) {
+        return weekday[input];
+    };
+});
+
+app.filter('times', function() {
+    return function(input) {
+        if(input == '**-**') return 'Closed';
+        return input.replace("-"," - ");
+    };
+});
+
+
+var codeRange = {
+    AL:["35801 - 35816"],
+    AK:["99501 - 99524"],
+    AZ:["85001 - 85055"],
+    AR:["72201 - 72217"],
+    CA:["94203 - 94209","90001 - 90089","90209 - 90213"],
+    CO:["80201 - 80239"],
+    CT:["06101 - 06112"],
+    DE:["19901 - 19905"],
+    DC:["20001 - 20020"],
+    FL:["32501 - 32509","33124 - 33190","32801 - 32837"],
+    GA:["30301 - 30381"],
+    HI:["96801 - 96830"],
+    ID:["83254 - 83254"],
+    IL:["60601 - 60641","62701 - 62709"],
+    IN:["46201 - 46209"],
+    IA:["52801 - 52809","50301 - 50323"],
+    KS:["67201 - 67221"],
+    KY:["41701 - 41702"],
+    LA:["70112 - 70119"],
+    ME:["04032 - 04034"],
+    MD:["21201 - 21237"],
+    MA:["02101 - 02137"],
+    MI:["49036 - 49036","49734 - 49735"],
+    MN:["55801 - 55808"],
+    MS:["39530 - 39535"],
+    MO:["63101 - 63141"],
+    MT:["59044 - 59044"],
+    NE:["68901 - 68902"],
+    NV:["89501 - 89513"],
+    NH:["03217 - 03217"],
+    NJ:["07039 - 07039"],
+    NM:["87500 - 87506"],
+    NY:["10001 - 10048"],
+    NC:["27565 - 27565"],
+    ND:["58282 - 58282"],
+    OH:["44101 - 44179"],
+    OK:["74101 - 74110"],
+    OR:["97201 - 97225"],
+    PA:["15201 - 15244"],
+    RI:["02840 - 02841"],
+    SC:["29020 - 29020"],
+    SD:["57401 - 57402"],
+    TN:["37201 - 37222"],
+    TX:["78701 - 78705"],
+    UT:["84321 - 84323"],
+    VT:["05751 - 05751"],
+    VA:["24517 - 24517"],
+    WA:["98004 - 98009"],
+    WV:["25813 - 25813"],
+    WY:["82941 - 82941"],
+    WI:["53201 - 53228"],
+}
+
+function findState(zip) {
+    var ss = '';
+    $.each(codeRange, function(state,ranges){
+        $.each(ranges, function(key,range){
+            var r = range.split(" - ");
+            for (var i = r[0]; i <= r[1]; i++) {
+                if(i == zip){                    
+                    ss =  state;
+                    return true;
+                }
+            }
+        })
+    })
+
+    return ss;
+}

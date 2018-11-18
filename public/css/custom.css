@@ -1,0 +1,23 @@
+.title {
+    font-size: 2em;
+}
+
+.name-form h1 {
+    font-weight: 900;
+    font-size: 2em;
+    margin-bottom: 20px;
+    margin-top: 4px;
+    line-height: 1.2143;
+}
+
+.team-url-box .col-sm-8 {
+    padding-right: 0px;
+}
+
+.team-url-box .col-sm-4 {
+    padding-left: 0px;
+    display: flex;
+    align-items: center;
+}
+
+/* worlflow */
